@@ -5,16 +5,10 @@ import sys
 import re
 import binascii
 
-def _reverse_bits(value, nbits):
-    return sum(
-        1 << (nbits - 1 - i)
-        for i in xrange(nbits)
-        if (value >> i) & 1
-    )
 
 def main():
 	try:
-		reader = msr605.MSR605("/dev/tty.usbserial", test=False)
+		reader = msr605.MSR605("/dev/tty.usbserial", test=False, timeout=120)
 		reader.reset()
 		reader.select_bpi(1,0,1)
 		reader.set_hico()

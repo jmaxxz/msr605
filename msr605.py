@@ -2,6 +2,7 @@ import time
 import serial
 import re
 import codecs
+import binascii
 
 class MSRException(Exception):
     pass
@@ -30,8 +31,8 @@ class MSR605(serial.Serial):
 
     TRACK_SENTINELS = (('%', '?'), (';', '?'), (';', '?'))
 
-    def __init__(self, dev, test=True):
-        super(MSR605, self).__init__(dev, 9600, 8, serial.PARITY_NONE, timeout=120)
+    def __init__(self, dev, test=True, timeout=10):
+        super(MSR605, self).__init__(dev, 9600, 8, serial.PARITY_NONE, timeout=timeout)
 
         self.reset()
         if test:
@@ -70,6 +71,7 @@ class MSR605(serial.Serial):
         self.flushInput()
         self.flushOutput()
         self.write(self.ESC_CHR + command + ''.join(args))
+        self.flush()
 
     def all_leds_off(self):
         self._send_command('\x81')
@@ -170,6 +172,13 @@ class MSR605(serial.Serial):
         self._send_command('\x6F', chr(t1), chr(t2), chr(t3))
         self._expect(self.ESC_CHR + '\x30' + chr(t1) + chr(t2) + chr(t3))
 
+    def _reverse_bits(self, s):
+        nv = ''
+        value = bytearray(s)
+        for b in value:
+            nv += chr(int('{:08b}'.format(b)[::-1], 2))
+        return nv
+
     def write_raw(self, *tracks):
         assert len(tracks) == 3
         raw_data_block = self.ESC_CHR + '\x73'
@@ -178,7 +187,7 @@ class MSR605(serial.Serial):
                 self.ESC_CHR +\
                 chr(tn + 1) +\
                 chr(len(track)) +\
-                track
+                self._reverse_bits(track)
         raw_data_block += '\x3F' + self.FS_CHR
         self._send_command('\x6E', raw_data_block)
         self._read_status()
